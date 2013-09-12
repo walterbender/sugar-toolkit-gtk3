@@ -108,6 +108,7 @@ class ActivityBundle(Bundle):
         self._tags = None
         self._activity_version = '0'
         self._summary = None
+        self._maximum_instances = None
 
         info_file = self.get_file('activity/activity.info')
         if info_file is None:
@@ -172,6 +173,16 @@ class ActivityBundle(Bundle):
 
         if cp.has_option(section, 'summary'):
             self._summary = cp.get(section, 'summary')
+
+        if cp.has_option(section, 'maximum_instances'):
+            maximum_instances = cp.get(section, 'maximum_instances')
+            try:
+                self._maximum_instances = int(maximum_instances)
+            except ValueError:
+                logging.error(
+                    'Activity bundle %s has invalid maximum_instances %s' %
+                    (self._path, maximum_instances))
+                self._maximum_instances = None
 
     def _get_linfo_file(self):
         # Using method from gettext.py, first find languages from environ
@@ -272,6 +283,10 @@ class ActivityBundle(Bundle):
     def get_summary(self):
         """Get the summary that describe the activity"""
         return self._summary
+
+    def get_maximum_instances(self):
+        """Get the summary that describe the activity"""
+        return self._maximum_instances
 
     def get_show_launcher(self):
         """Get whether there should be a visible launcher for the activity"""
