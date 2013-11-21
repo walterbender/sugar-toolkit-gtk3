@@ -108,7 +108,7 @@ class ActivityBundle(Bundle):
         self._tags = None
         self._activity_version = '0'
         self._summary = None
-        self._one_open_instance = False
+        self._single_instance = False
 
         info_file = self.get_file('activity/activity.info')
         if info_file is None:
@@ -180,10 +180,10 @@ class ActivityBundle(Bundle):
         if cp.has_option(section, 'summary'):
             self._summary = cp.get(section, 'summary')
 
-        if cp.has_option(section, 'one_open_instance'):
-            logging.error(cp.get(section, 'one_open_instance'))
-            if cp.get(section, 'one_open_instance') == 'yes':
-                self._one_open_instance = True
+        if cp.has_option(section, 'single_instance'):
+            logging.error(cp.get(section, 'single_instance'))
+            if cp.get(section, 'single_instance') == 'yes':
+                self._single_instance = True
 
     def _get_linfo_file(self):
         # Using method from gettext.py, first find languages from environ
@@ -285,9 +285,9 @@ class ActivityBundle(Bundle):
         """Get the summary that describe the activity"""
         return self._summary
 
-    def get_one_open_instance(self):
-        """Get whether there should only be one instance for the activity"""
-        return self._one_open_instance
+    def get_single_instance(self):
+        """Get whether there should be a single instance for the activity"""
+        return self._single_instance
 
     def get_show_launcher(self):
         """Get whether there should be a visible launcher for the activity"""
