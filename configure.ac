@@ -1,4 +1,4 @@
-AC_INIT([sugar-toolkit-gtk3],[0.99.3],[],[sugar-toolkit-gtk3])
+AC_INIT([sugar-toolkit-gtk3],[0.100.0],[],[sugar-toolkit-gtk3])
 
 AC_PREREQ([2.59])
 
@@ -15,6 +15,7 @@ GNOME_COMPILE_WARNINGS(maximum)
 
 AC_PATH_PROG([GLIB_GENMARSHAL], [glib-genmarshal])
 
+PYTHON=python2
 AM_PATH_PYTHON
 AM_CHECK_PYTHON_HEADERS(,[AC_MSG_ERROR(could not find Python headers)])
 
