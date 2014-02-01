@@ -74,7 +74,6 @@ from telepathy.constants import CONNECTION_HANDLE_TYPE_CONTACT
 from telepathy.constants import CONNECTION_HANDLE_TYPE_ROOM
 
 from sugar3 import util
-from sugar3 import power
 from sugar3.presence import presenceservice
 from sugar3.activity.activityservice import ActivityService
 from sugar3.graphics import style
@@ -160,33 +159,9 @@ class Activity(Window, Gtk.Container):
 
         1. implement an __init__() method for your Activity class.
 
-           Use your init method to create your own ToolbarBox.
-           This is the code to make a basic toolbar with the activity
-           toolbar and a stop button.
-                from sugar3.graphics.toolbarbox import ToolbarBox
-                from sugar3.activity.widgets import ActivityToolbarButton
-                from sugar3.activity.widgets import StopButton
-
-                ...
-
-                toolbar_box = ToolbarBox()
-                activity_button = ActivityToolbarButton(self)
-                toolbar_box.toolbar.insert(activity_button, 0)
-                activity_button.show()
-
-                ... Your toolbars ...
-
-                separator = Gtk.SeparatorToolItem(draw=False)
-                separator.set_expand(True)
-                toolbar_box.toolbar.insert(separator, -1)
-                separator.show()
-
-                stop_button = StopButton(self)
-                toolbar_box.toolbar.insert(stop_button, -1)
-                stop_button.show()
-
-                self.set_toolbar_box(toolbar_box)
-                toolbar_box.show()
+           Use your init method to create your own ActivityToolbar which will
+           contain some standard buttons:
+                toolbox = activity.ActivityToolbox(self)
 
            Add extra Toolbars to your toolbox.
 
@@ -220,9 +195,7 @@ class Activity(Window, Gtk.Container):
            Usually, you will also need the standard EditToolbar. This is the
            one which has the standard copy and paste buttons. You need to
            derive your own EditToolbar class from sugar3.EditToolbar:
-                from sugar3.activity.widgets import EditToolbar
-
-                class MyEditToolbar(EditToolbar):
+                class EditToolbar(activity.EditToolbar):
                     ...
 
            See EditToolbar for the methods you should implement in your class.
@@ -317,6 +290,19 @@ class Activity(Window, Gtk.Container):
         # of the processes
         proc_title = '%s <%s>' % (get_bundle_name(), handle.activity_id)
         util.set_proc_title(proc_title)
+
+        self._fixed = Gtk.Fixed()
+        # self.fixed.connect('size-allocate', self._fixed_resize_cb)
+        Window.set_canvas(self, self._fixed)
+        self._fixed.show()
+
+        self._canvas_box = Gtk.VBox(False, 0)
+        self._canvas_box.set_size_request(Gdk.Screen.width(),
+                                          Gdk.Screen.height())
+        self._fixed.put(self._canvas_box, 0, 0)
+        self._canvas_box.show()
+
+        self._overlays = []
 
         self.connect('realize', self.__realize_cb)
         self.connect('delete-event', self.__delete_event_cb)
@@ -514,8 +500,39 @@ class Activity(Window, Gtk.Container):
         """Returns the bundle_id from the activity.info file"""
         return os.environ['SUGAR_BUNDLE_ID']
 
-    def get_canvas(self):
+    def add_overlay(self, widget, x, y):
+        self._overlays.append([widget, x, y])
+        self._fixed.put(widget, x, y)
+        widget.show()
+
+    def move_overlay(self, widget, x, y):
+        for overlay in self._overlays:
+            if overlay[0] == widget:
+                self._fixed.move(widget, x, y)
+                overlay[1] = x
+                overlay[2] = y
+
+    def hide_overlays(self):
+        for overlay in self._overlays:
+            overlay[0].hide()
+
+    def show_overlays(self):
+        for overlay in self._overlays:
+            overlay[0].hide()
+
+    def get_fixed(self):
+        return self._fixed
+
+    def get_fixed_window(self):
         return Window.get_canvas(self)
+
+    def _fixed_resize_cb(self, widget=None, rect=None):
+        ''' If a toolbar opens or closes, we need to resize the canvas_box '''
+        self._canvas_box.set_size_request(rect.width, rect.height)
+
+    def get_canvas(self):
+        # return Window.get_canvas(self)
+        return self._canvas_box
 
     def set_canvas(self, canvas):
         """Sets the 'work area' of your activity with the canvas of your
@@ -523,7 +540,9 @@ class Activity(Window, Gtk.Container):
 
         One commonly used canvas is Gtk.ScrolledWindow
         """
-        Window.set_canvas(self, canvas)
+        self._canvas_box.add(canvas)
+
+        # Window.set_canvas(self, canvas)
         if not self._read_file_called:
             canvas.connect('map', self.__canvas_map_cb)
 
@@ -810,10 +829,6 @@ class Activity(Window, Gtk.Container):
             logging.debug('Failed to join activity: %s' % err)
             return
 
-        power_manager = power.get_power_manager()
-        if power_manager.suspend_breaks_collaboration():
-            power_manager.inhibit_suspend()
-
         self.reveal()
         self.emit('joined')
         self.__privacy_changed_cb(self.shared_activity, None)
@@ -841,10 +856,6 @@ class Activity(Window, Gtk.Container):
                       (self._activity_id, activity))
 
         activity.props.name = self._jobject.metadata['title']
-
-        power_manager = power.get_power_manager()
-        if power_manager.suspend_breaks_collaboration():
-            power_manager.inhibit_suspend()
 
         self.shared_activity = activity
         self.shared_activity.connect('notify::private',
@@ -962,7 +973,6 @@ class Activity(Window, Gtk.Container):
         dbus.service.Object.remove_from_connection(self._bus)
 
         self._session.unregister(self)
-        power.get_power_manager().shutdown()
 
     def close(self, skip_save=False):
         """Request that the activity be stopped and saved to the Journal
