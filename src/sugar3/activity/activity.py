@@ -523,7 +523,7 @@ class Activity(Window, Gtk.Container):
     def get_fixed(self):
         return self._fixed
 
-    def get_fixed_window(self):
+    def get_fixed_canvas(self):
         return Window.get_canvas(self)
 
     def _fixed_resize_cb(self, widget=None, rect=None):
